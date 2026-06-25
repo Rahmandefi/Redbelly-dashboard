@@ -82,7 +82,3 @@ If the RPC or any data source is temporarily unreachable, the dashboard
 keeps showing the last known good values and displays a stale-data banner;
 it never blanks out or shows a broken page. This is implemented per-metric,
 so a single failed call doesn't take down the rest of the dashboard.
-
-## License
-
-MIT
