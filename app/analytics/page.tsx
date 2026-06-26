@@ -608,18 +608,6 @@ export default function AnalyticsPage() {
               &copy; {new Date().getFullYear()} Redbelly Network. Institutional Grade RWA Layer.
             </p>
           </div>
-          <div className="flex gap-6">
-            {["Terms of Service", "Privacy Policy", "Status"].map((l) => (
-              <a
-                key={l}
-                href="#"
-                style={{ color: MUTED, fontSize: "12px" }}
-                className="hover:underline"
-              >
-                {l}
-              </a>
-            ))}
-          </div>
         </div>
       </footer>
     </div>
