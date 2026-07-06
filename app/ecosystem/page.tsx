@@ -84,7 +84,7 @@ const PARTNER_LOGOS: Record<string, string> = {
   "Forte Tech (AUDF)": "/logos/forteaud.webp",
   "MintMingle / Nexus Fusion": "/logos/mintmingle.svg",
   "JellyC": "/logos/jellyc.gif",
-  "Tokeniser": "/logos/tokeniser.svg",
+  "Tokeniser": "/logos/tokeniser.jpg",
   "Imperium Markets": "/logos/imperium.svg",
   "Reddex": "/logos/reddex.png",
 };
@@ -105,7 +105,7 @@ const PARTNER_WEBSITES: Record<string, string> = {
   "Celer Network (cBridge)": "https://celer.network",
   "Lucid Labs (Polymer)": "https://lucidlabs.fi",
   "Goldsky": "https://goldsky.com",
-  "Tokeniser": "https://tokeniser.com.au",
+  "Tokeniser": "https://www.linkedin.com/company/tokeniser/",
   "Bulla Network": "https://bulla.network",
   "JellyC": "https://www.jellyc.io",
   "Imperium Markets": "https://imperium.markets",

@@ -263,7 +263,7 @@ const PARTNER_LOGO_FILES: Record<string, string> = {
   "Forte Tech (AUDF)":        "/logos/forteaud.webp",
   "MintMingle / Nexus Fusion":"/logos/mintmingle.svg",
   "JellyC":                   "/logos/jellyc.gif",
-  "Tokeniser":                "/logos/tokeniser.svg",
+  "Tokeniser":                "/logos/tokeniser.jpg",
   "Imperium Markets":         "/logos/imperium.svg",
   "Reddex":                   "/logos/reddex.png",
 };
