@@ -12,6 +12,7 @@ import {
   getReddexDEXData,
   getAccreditedIssuerCount,
   getTPS,
+  getHistoricalStats,
   PARTNERSHIPS,
 } from "@/lib/rpc";
 
@@ -40,10 +41,11 @@ export async function GET() {
     issuerCount,
     tps,
     recentBlocks,
+    historicalStats,
   ] = await Promise.all([
     safe(getBlockNumber, 0),
     safe(getLatestBlock, null),
-    safe(() => getRecentActivity(100), { activeAddresses: 0, transactionCount: 0 }),
+    safe(() => getRecentActivity(100), { activeAddresses: 0, transactionCount: 0, gasFeesRBNT: 0, contractsDeployed: 0 }),
     safe(getRBNTPrice, { usd: 0, change24h: 0 }),
     safe(getTotalSupply, 10_000_000_000),
     safe(getRWATokenData, []),
@@ -59,6 +61,7 @@ export async function GET() {
     safe(getAccreditedIssuerCount, 1),
     safe(getTPS, { tps: 0, blockTime: 0 }),
     safe(() => getRecentBlocks(5), [] as Array<{ number: number; timestamp: number; txCount: number; hashSuffix: string }>),
+    safe(getHistoricalStats, { tx24h: 0, tx7d: 0, tx30d: 0, txAllTime: 0, gasFees24hRBNT: 0, contractsDeployed24h: 0 }),
   ]);
 
   // Gas price derived from the RPC block (baseFeePerGas is in wei; convert to gwei).
@@ -97,7 +100,15 @@ export async function GET() {
       activeAddresses: recentActivity.value.activeAddresses,
       transactionsRecent: recentActivity.value.transactionCount,
       transactionsWindow: 100,
+      gasFeesRBNT: recentActivity.value.gasFeesRBNT,
+      contractsDeployed: recentActivity.value.contractsDeployed,
       verifiedWallets: 740000,
+      tx24h: historicalStats.value.tx24h,
+      tx7d: historicalStats.value.tx7d,
+      tx30d: historicalStats.value.tx30d,
+      txAllTime: historicalStats.value.txAllTime,
+      gasFees24hRBNT: historicalStats.value.gasFees24hRBNT,
+      contractsDeployed24h: historicalStats.value.contractsDeployed24h,
     },
     price: {
       ...price.value,

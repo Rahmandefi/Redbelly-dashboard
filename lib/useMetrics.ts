@@ -61,7 +61,15 @@ export interface MetricsData {
     activeAddresses: number;
     transactionsRecent: number;
     transactionsWindow: number;
+    gasFeesRBNT: number;
+    contractsDeployed: number;
     verifiedWallets: number;
+    tx24h: number;
+    tx7d: number;
+    tx30d: number;
+    txAllTime: number;
+    gasFees24hRBNT: number;
+    contractsDeployed24h: number;
   };
   price: { usd: number; change24h: number; unavailable: boolean };
   tvl: {

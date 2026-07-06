@@ -12,9 +12,11 @@ async function withCache<T>(key: string, ttlMs: number, fn: () => Promise<T>): P
   return value;
 }
 
-const RPC_URL = "https://governors.mainnet.redbelly.network";
+const RPC_URL =
+  process.env.REDBELLY_RPC_URL ?? "https://governors.mainnet.redbelly.network";
 const ROUTESCAN_BASE =
   "https://api.routescan.io/v2/network/mainnet/evm/151/etherscan/api";
+const ROUTESCAN_API_KEY = process.env.ROUTESCAN_API_KEY ?? "";
 const COINGECKO_URL =
   "https://api.coingecko.com/api/v3/simple/price?ids=redbelly-network-token&vs_currencies=usd&include_24hr_change=true";
 const REDDEX_SUBGRAPH =
@@ -234,6 +236,7 @@ async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
 async function routescanCall(params: Record<string, string>): Promise<unknown> {
   const url = new URL(ROUTESCAN_BASE);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  if (ROUTESCAN_API_KEY) url.searchParams.set("apikey", ROUTESCAN_API_KEY);
   const res = await fetch(url.toString(), { next: { revalidate: 0 } });
   const data = await res.json();
   if (data.status === "0" && data.message === "NOTOK")
@@ -273,11 +276,15 @@ export async function getLatestBlock() {
 export async function getRecentActivity(blockCount = 100): Promise<{
   activeAddresses: number;
   transactionCount: number;
+  gasFeesRBNT: number;
+  contractsDeployed: number;
 }> {
   const latestBlockNum = await getBlockNumber();
   const fromBlock = Math.max(latestBlockNum - blockCount, 1);
   const addresses = new Set<string>();
   let txCount = 0;
+  let gasFeesRBNT = 0;
+  let contractsDeployed = 0;
 
   const BATCH = 20;
   for (let i = fromBlock; i <= latestBlockNum; i += BATCH) {
@@ -294,15 +301,19 @@ export async function getRecentActivity(blockCount = 100): Promise<{
       if (r.status === "fulfilled" && r.value) {
         const block = r.value as Record<string, unknown>;
         const txs = block.transactions as Array<Record<string, string>>;
+        const gasUsed = parseInt(block.gasUsed as string ?? "0", 16);
+        const baseFee = parseInt(block.baseFeePerGas as string ?? "0", 16);
         txCount += txs?.length ?? 0;
+        gasFeesRBNT += (gasUsed * baseFee) / 1e18;
         txs?.forEach((tx) => {
           if (tx.from) addresses.add(tx.from.toLowerCase());
           if (tx.to) addresses.add(tx.to.toLowerCase());
+          if (!tx.to) contractsDeployed++;
         });
       }
     }
   }
-  return { activeAddresses: addresses.size, transactionCount: txCount };
+  return { activeAddresses: addresses.size, transactionCount: txCount, gasFeesRBNT, contractsDeployed };
 }
 
 export async function getRBNTPrice(): Promise<{
@@ -588,4 +599,91 @@ export async function getTPS(): Promise<{ tps: number; blockTime: number }> {
     tps: Math.round(tps * 10) / 10,
     blockTime: Math.round(blockTime * 10) / 10,
   };
+}
+
+// Binary search via RPC to find the block number closest to a given Unix timestamp
+async function getBlockNumberAtTime(targetTimestamp: number, currentBlock: number): Promise<number> {
+  let lo = 1;
+  let hi = currentBlock;
+  while (lo < hi - 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    const block = (await rpcCall("eth_getBlockByNumber", [`0x${mid.toString(16)}`, false])) as Record<string, unknown>;
+    const ts = parseInt(block.timestamp as string, 16);
+    if (ts < targetTimestamp) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
+
+// Sample blocks evenly across a range to estimate tx count, gas fees, and contract deployments
+async function sampleBlockRange(
+  fromBlock: number,
+  toBlock: number,
+  samples = 20
+): Promise<{ estimatedTxCount: number; estimatedGasFeesRBNT: number; estimatedContractsDeployed: number }> {
+  const range = toBlock - fromBlock;
+  if (range <= 0) return { estimatedTxCount: 0, estimatedGasFeesRBNT: 0, estimatedContractsDeployed: 0 };
+  const step = Math.max(1, Math.floor(range / samples));
+  const blockNums: number[] = [];
+  for (let n = fromBlock; n <= toBlock && blockNums.length < samples; n += step) blockNums.push(n);
+
+  const results = await Promise.allSettled(
+    blockNums.map((n) => rpcCall("eth_getBlockByNumber", [`0x${n.toString(16)}`, true]))
+  );
+
+  let totalTx = 0, totalGas = 0, totalContracts = 0, valid = 0;
+  for (const r of results) {
+    if (r.status === "fulfilled" && r.value) {
+      const b = r.value as Record<string, unknown>;
+      const txs = b.transactions as Array<Record<string, string>>;
+      const gasUsed = parseInt(b.gasUsed as string ?? "0", 16);
+      const baseFee = parseInt(b.baseFeePerGas as string ?? "0", 16);
+      totalTx += txs?.length ?? 0;
+      totalGas += (gasUsed * baseFee) / 1e18;
+      totalContracts += txs?.filter((tx) => !tx.to).length ?? 0;
+      valid++;
+    }
+  }
+  if (valid === 0) return { estimatedTxCount: 0, estimatedGasFeesRBNT: 0, estimatedContractsDeployed: 0 };
+  const avgTx = totalTx / valid;
+  const avgGas = totalGas / valid;
+  const avgContracts = totalContracts / valid;
+  return {
+    estimatedTxCount: Math.round(avgTx * range),
+    estimatedGasFeesRBNT: avgGas * range,
+    estimatedContractsDeployed: Math.round(avgContracts * range),
+  };
+}
+
+export async function getHistoricalStats(): Promise<{
+  tx24h: number;
+  tx7d: number;
+  tx30d: number;
+  txAllTime: number;
+  gasFees24hRBNT: number;
+  contractsDeployed24h: number;
+}> {
+  return withCache("historical-stats", 600_000, async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const currentBlock = await getBlockNumber();
+    const [block24hAgo, block7dAgo, block30dAgo] = await Promise.all([
+      getBlockNumberAtTime(now - 86_400, currentBlock),
+      getBlockNumberAtTime(now - 7 * 86_400, currentBlock),
+      getBlockNumberAtTime(now - 30 * 86_400, currentBlock),
+    ]);
+    const [stats24h, stats7d, stats30d, statsAllTime] = await Promise.all([
+      sampleBlockRange(block24hAgo, currentBlock, 25),
+      sampleBlockRange(block7dAgo, currentBlock, 25),
+      sampleBlockRange(block30dAgo, currentBlock, 25),
+      sampleBlockRange(1, currentBlock, 30),
+    ]);
+    return {
+      tx24h: stats24h.estimatedTxCount,
+      tx7d: stats7d.estimatedTxCount,
+      tx30d: stats30d.estimatedTxCount,
+      txAllTime: statsAllTime.estimatedTxCount,
+      gasFees24hRBNT: stats24h.estimatedGasFeesRBNT,
+      contractsDeployed24h: stats24h.estimatedContractsDeployed,
+    };
+  });
 }

@@ -369,9 +369,9 @@ export default function Dashboard() {
                 sub={`last ${data.activity.transactionsWindow} blocks`}
               />
               <HeroCard
-                label="Transactions (recent)"
-                value={formatShortNum(data.activity.transactionsRecent)}
-                sub={`last ${data.activity.transactionsWindow} blocks`}
+                label="Transactions (24h)"
+                value={data.activity.tx24h > 0 ? formatShortNum(data.activity.tx24h) : formatShortNum(data.activity.transactionsRecent)}
+                sub={data.activity.tx24h > 0 ? "est. from block sample" : `last ${data.activity.transactionsWindow} blocks`}
               />
               <HeroCard
                 label="RBNT Price (USD)"
@@ -449,6 +449,14 @@ export default function Dashboard() {
                       value={`${data.network.tps} tx/s`}
                     />
                     <TerminalRow
+                      label="Gas Fees (24h)"
+                      value={data.activity.gasFees24hRBNT > 0 ? `${data.activity.gasFees24hRBNT.toFixed(2)} RBNT` : `${data.activity.gasFeesRBNT.toFixed(4)} RBNT`}
+                    />
+                    <TerminalRow
+                      label="Contracts Deployed (24h)"
+                      value={data.activity.contractsDeployed24h > 0 ? formatShortNum(data.activity.contractsDeployed24h) : formatShortNum(data.activity.contractsDeployed)}
+                    />
+                    <TerminalRow
                       label="Consensus"
                       value="BFT"
                       valueColor={TEAL}
@@ -512,6 +520,24 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Historical transaction stats */}
+            {data.activity.tx24h > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: "Txs (24h)", value: formatShortNum(data.activity.tx24h) },
+                  { label: "Txs (7d)", value: formatShortNum(data.activity.tx7d) },
+                  { label: "Txs (30d)", value: formatShortNum(data.activity.tx30d) },
+                  { label: "Txs (all-time)", value: formatShortNum(data.activity.txAllTime) },
+                ].map(({ label, value }) => (
+                  <div key={label} className="glass-card p-4 rounded flex flex-col gap-1">
+                    <span style={{ fontSize: "11px", color: MUTED, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+                    <span style={{ fontSize: "22px", fontWeight: 600, color: TEAL }}>{value}</span>
+                    <span style={{ fontSize: "10px", color: MUTED }}>est. from block sample</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Partner marquee */}
             <section
