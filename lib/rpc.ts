@@ -211,7 +211,7 @@ export const PARTNERSHIPS = [
   { name: "Celer Network (cBridge)", category: "Cross-chain Bridge", detail: "ETH, BNB, Redbelly transfers live" },
   { name: "Lucid Labs (Polymer)", category: "Cross-chain", detail: "Cross-chain connectivity layer" },
   { name: "Goldsky", category: "Developer Tooling", detail: "Subgraph-style data indexing" },
-  { name: "Tokeniser", category: "Equity Tokenisation", detail: "150+ companies, 20,000 investors, $1B+ equities" },
+  { name: "Tokeniser", category: "Equity Tokenisation", detail: "160+ companies, A$1.2B issued equity, A$2B+ transactions" },
   { name: "Bulla Network", category: "Supply Chain Finance", detail: "On-chain invoicing and payables" },
   { name: "JellyC", category: "Fund Tokenisation", detail: "Tokenised managed investment scheme" },
   { name: "Imperium Markets", category: "Bond Issuance", detail: "Australia's first tokenised corporate bond" },
